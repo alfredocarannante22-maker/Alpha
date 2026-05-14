@@ -1,47 +1,43 @@
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  onSnapshot,
-  Unsubscribe,
-  orderBy,
-} from 'firebase/firestore';
+import { ref, push, update, remove, onValue, off, Unsubscribe } from 'firebase/database';
 import { db } from './firebase';
 import { CalendarEvent } from '../types';
-
-const COL = 'events';
 
 export function subscribeToEvents(
   coupleId: string,
   callback: (events: CalendarEvent[]) => void
 ): Unsubscribe {
-  const q = query(
-    collection(db, COL),
-    where('coupleId', '==', coupleId),
-    orderBy('startDate', 'asc')
-  );
-  return onSnapshot(q, (snap) => {
-    const events: CalendarEvent[] = snap.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Omit<CalendarEvent, 'id'>),
-    }));
+  const eventsRef = ref(db, `events/${coupleId}`);
+
+  const listener = onValue(eventsRef, (snap) => {
+    const events: CalendarEvent[] = [];
+    if (snap.exists()) {
+      snap.forEach((child) => {
+        events.push({ id: child.key!, ...(child.val() as Omit<CalendarEvent, 'id'>) });
+      });
+      events.sort((a, b) => a.startDate.localeCompare(b.startDate));
+    }
     callback(events);
   });
+
+  return () => off(eventsRef, 'value', listener);
 }
 
 export async function createEvent(event: Omit<CalendarEvent, 'id'>): Promise<string> {
-  const ref = await addDoc(collection(db, COL), event);
-  return ref.id;
+  const newRef = await push(ref(db, `events/${event.coupleId}`), event);
+  return newRef.key!;
 }
 
-export async function updateEvent(id: string, data: Partial<CalendarEvent>): Promise<void> {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: new Date().toISOString() });
+export async function updateEvent(
+  coupleId: string,
+  id: string,
+  data: Partial<CalendarEvent>
+): Promise<void> {
+  await update(ref(db, `events/${coupleId}/${id}`), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
-export async function deleteEvent(id: string): Promise<void> {
-  await deleteDoc(doc(db, COL, id));
+export async function deleteEvent(coupleId: string, id: string): Promise<void> {
+  await remove(ref(db, `events/${coupleId}/${id}`));
 }

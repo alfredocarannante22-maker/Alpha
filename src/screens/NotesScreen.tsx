@@ -82,7 +82,7 @@ export default function NotesScreen({ user }: Props) {
     try {
       const now = new Date().toISOString();
       if (editing) {
-        await updateNote(editing.id, {
+        await updateNote(user.uid, editing.id, {
           title: title.trim(),
           content: content.trim(),
           color: noteColor,
@@ -109,7 +109,7 @@ export default function NotesScreen({ user }: Props) {
   }
 
   async function togglePin(note: Note) {
-    await updateNote(note.id, { isPinned: !note.isPinned });
+    await updateNote(user.uid, note.id, { isPinned: !note.isPinned });
   }
 
   async function handleDelete(note: Note) {
@@ -118,7 +118,7 @@ export default function NotesScreen({ user }: Props) {
       {
         text: 'Elimina',
         style: 'destructive',
-        onPress: () => deleteNote(note.id),
+        onPress: () => deleteNote(user.uid, note.id),
       },
     ]);
   }
@@ -130,9 +130,7 @@ export default function NotesScreen({ user }: Props) {
     >
       <View style={styles.noteTopRow}>
         {item.title ? (
-          <Text style={styles.noteTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
+          <Text style={styles.noteTitle} numberOfLines={1}>{item.title}</Text>
         ) : null}
         <View style={styles.noteActions}>
           <TouchableOpacity onPress={() => togglePin(item)} style={styles.noteAction}>
@@ -148,28 +146,21 @@ export default function NotesScreen({ user }: Props) {
         </View>
       </View>
       {item.content ? (
-        <Text style={styles.noteContent} numberOfLines={4}>
-          {item.content}
-        </Text>
+        <Text style={styles.noteContent} numberOfLines={4}>{item.content}</Text>
       ) : null}
       <Text style={styles.noteDate}>
-        {new Date(item.updatedAt).toLocaleDateString('it-IT', {
-          day: 'numeric',
-          month: 'short',
-        })}
+        {new Date(item.updatedAt).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
       </Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Note personali</Text>
         <Text style={styles.headerSub}>Solo tu puoi vederle 🔒</Text>
       </View>
 
-      {/* Search */}
       <View style={styles.searchBar}>
         <Ionicons name="search-outline" size={18} color={colors.textLight} />
         <TextInput
@@ -190,13 +181,9 @@ export default function NotesScreen({ user }: Props) {
       ) : filtered.length === 0 ? (
         <View style={styles.empty}>
           <Text style={styles.emptyEmoji}>📝</Text>
-          <Text style={styles.emptyTitle}>
-            {search ? 'Nessun risultato' : 'Nessuna nota'}
-          </Text>
+          <Text style={styles.emptyTitle}>{search ? 'Nessun risultato' : 'Nessuna nota'}</Text>
           <Text style={styles.emptyDesc}>
-            {search
-              ? 'Prova con un altro termine.'
-              : 'Tocca + per aggiungere la tua prima nota.'}
+            {search ? 'Prova con un altro termine.' : 'Tocca + per aggiungere la tua prima nota.'}
           </Text>
         </View>
       ) : (
@@ -210,25 +197,19 @@ export default function NotesScreen({ user }: Props) {
         />
       )}
 
-      {/* FAB */}
       <TouchableOpacity style={styles.fab} onPress={openCreate}>
         <Ionicons name="add" size={28} color={colors.white} />
       </TouchableOpacity>
 
-      {/* Modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Annulla</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editing ? 'Modifica nota' : 'Nuova nota'}
-            </Text>
+            <Text style={styles.modalTitle}>{editing ? 'Modifica nota' : 'Nuova nota'}</Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              {saving ? <ActivityIndicator color={colors.primary} /> : (
                 <Text style={styles.modalSave}>Salva</Text>
               )}
             </TouchableOpacity>
@@ -253,7 +234,6 @@ export default function NotesScreen({ user }: Props) {
             />
           </View>
 
-          {/* Color picker */}
           <View style={styles.colorPicker}>
             <Text style={styles.colorLabel}>Colore</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -371,12 +351,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     paddingBottom: 12,
   },
-  noteContentInput: {
-    fontSize: 16,
-    color: colors.text,
-    flex: 1,
-    lineHeight: 24,
-  },
+  noteContentInput: { fontSize: 16, color: colors.text, flex: 1, lineHeight: 24 },
   colorPicker: {
     padding: 16,
     backgroundColor: colors.surface,

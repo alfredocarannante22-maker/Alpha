@@ -1,46 +1,41 @@
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  query,
-  where,
-  onSnapshot,
-  Unsubscribe,
-  orderBy,
-} from 'firebase/firestore';
+import { ref, push, update, remove, onValue, off, Unsubscribe } from 'firebase/database';
 import { db } from './firebase';
 import { Note } from '../types';
 
-const COL = 'notes';
-
-// Notes are personal: filter by createdBy (uid)
+// Notes are private — stored under /notes/{uid}/
 export function subscribeToNotes(uid: string, callback: (notes: Note[]) => void): Unsubscribe {
-  const q = query(
-    collection(db, COL),
-    where('createdBy', '==', uid),
-    orderBy('isPinned', 'desc'),
-    orderBy('updatedAt', 'desc')
-  );
-  return onSnapshot(q, (snap) => {
-    const notes: Note[] = snap.docs.map((d) => ({
-      id: d.id,
-      ...(d.data() as Omit<Note, 'id'>),
-    }));
+  const notesRef = ref(db, `notes/${uid}`);
+
+  const listener = onValue(notesRef, (snap) => {
+    const notes: Note[] = [];
+    if (snap.exists()) {
+      snap.forEach((child) => {
+        notes.push({ id: child.key!, ...(child.val() as Omit<Note, 'id'>) });
+      });
+      // Pinned first, then by updatedAt desc
+      notes.sort((a, b) => {
+        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+        return b.updatedAt.localeCompare(a.updatedAt);
+      });
+    }
     callback(notes);
   });
+
+  return () => off(notesRef, 'value', listener);
 }
 
 export async function createNote(note: Omit<Note, 'id'>): Promise<string> {
-  const ref = await addDoc(collection(db, COL), note);
-  return ref.id;
+  const newRef = await push(ref(db, `notes/${note.createdBy}`), note);
+  return newRef.key!;
 }
 
-export async function updateNote(id: string, data: Partial<Note>): Promise<void> {
-  await updateDoc(doc(db, COL, id), { ...data, updatedAt: new Date().toISOString() });
+export async function updateNote(uid: string, id: string, data: Partial<Note>): Promise<void> {
+  await update(ref(db, `notes/${uid}/${id}`), {
+    ...data,
+    updatedAt: new Date().toISOString(),
+  });
 }
 
-export async function deleteNote(id: string): Promise<void> {
-  await deleteDoc(doc(db, COL, id));
+export async function deleteNote(uid: string, id: string): Promise<void> {
+  await remove(ref(db, `notes/${uid}/${id}`));
 }

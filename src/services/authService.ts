@@ -5,18 +5,14 @@ import {
   updateProfile,
   User,
 } from 'firebase/auth';
-import {
-  doc,
-  setDoc,
-  getDoc,
-  updateDoc,
-  query,
-  collection,
-  where,
-  getDocs,
-} from 'firebase/firestore';
+import { ref, set, get, update } from 'firebase/database';
 import { auth, db } from './firebase';
 import { AppUser, UserRole } from '../types';
+
+// Sanitize email for use as RTDB key (replace . with ,)
+function emailToKey(email: string): string {
+  return email.toLowerCase().replace(/\./g, ',');
+}
 
 export async function registerUser(
   email: string,
@@ -29,13 +25,17 @@ export async function registerUser(
 
   const userData: AppUser = {
     uid: cred.user.uid,
-    email,
+    email: email.toLowerCase(),
     displayName,
     role,
-    coupleId: cred.user.uid, // starts solo, linked when partner joins
+    coupleId: cred.user.uid,
   };
 
-  await setDoc(doc(db, 'users', cred.user.uid), userData);
+  // Save user profile
+  await set(ref(db, `users/${cred.user.uid}`), userData);
+  // Save email → uid index for partner linking
+  await set(ref(db, `emailIndex/${emailToKey(email)}`), cred.user.uid);
+
   return userData;
 }
 
@@ -49,34 +49,36 @@ export async function logoutUser(): Promise<void> {
 }
 
 export async function getUserProfile(uid: string): Promise<AppUser | null> {
-  const snap = await getDoc(doc(db, 'users', uid));
-  return snap.exists() ? (snap.data() as AppUser) : null;
+  const snap = await get(ref(db, `users/${uid}`));
+  return snap.exists() ? (snap.val() as AppUser) : null;
 }
 
 export async function linkPartner(myUid: string, partnerEmail: string): Promise<string> {
-  const q = query(collection(db, 'users'), where('email', '==', partnerEmail));
-  const snap = await getDocs(q);
-
-  if (snap.empty) {
+  // Look up partner uid via email index
+  const indexSnap = await get(ref(db, `emailIndex/${emailToKey(partnerEmail)}`));
+  if (!indexSnap.exists()) {
     throw new Error('Partner non trovato. Assicurati che si sia già registrato.');
   }
 
-  const partnerDoc = snap.docs[0];
-  const partnerId = partnerDoc.id;
-  const partnerData = partnerDoc.data() as AppUser;
+  const partnerId: string = indexSnap.val();
 
-  // Use the smaller uid as the shared coupleId
-  const coupleId = myUid < partnerId ? `${myUid}_${partnerId}` : `${partnerId}_${myUid}`;
+  const mySnap = await get(ref(db, `users/${myUid}`));
+  if (!mySnap.exists()) throw new Error('Profilo non trovato.');
+  const myData = mySnap.val() as AppUser;
 
-  await updateDoc(doc(db, 'users', myUid), {
+  const coupleId = myUid < partnerId
+    ? `${myUid}_${partnerId}`
+    : `${partnerId}_${myUid}`;
+
+  await update(ref(db, `users/${myUid}`), {
     partnerId,
-    partnerEmail,
+    partnerEmail: partnerEmail.toLowerCase(),
     coupleId,
   });
 
-  await updateDoc(doc(db, 'users', partnerId), {
+  await update(ref(db, `users/${partnerId}`), {
     partnerId: myUid,
-    partnerEmail: (await getDoc(doc(db, 'users', myUid))).data()?.email,
+    partnerEmail: myData.email,
     coupleId,
   });
 

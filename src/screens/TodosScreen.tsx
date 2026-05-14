@@ -63,18 +63,15 @@ export default function TodosScreen({ user }: Props) {
   useEffect(() => {
     if (!selectedList) return;
     setItemsLoading(true);
-    const unsub = subscribeToItems(selectedList.id, (data) => {
+    const unsub = subscribeToItems(coupleId, selectedList.id, (data) => {
       setItems(data);
       setItemsLoading(false);
     });
     return unsub;
-  }, [selectedList]);
+  }, [selectedList, coupleId]);
 
   async function handleCreateList() {
-    if (!listTitle.trim()) {
-      Alert.alert('Attenzione', 'Dai un nome alla lista.');
-      return;
-    }
+    if (!listTitle.trim()) { Alert.alert('Attenzione', 'Dai un nome alla lista.'); return; }
     setSavingList(true);
     try {
       const now = new Date().toISOString();
@@ -125,11 +122,10 @@ export default function TodosScreen({ user }: Props) {
     Alert.alert('Elimina lista', `Eliminare "${list.title}"?`, [
       { text: 'Annulla', style: 'cancel' },
       {
-        text: 'Elimina',
-        style: 'destructive',
+        text: 'Elimina', style: 'destructive',
         onPress: async () => {
           if (selectedList?.id === list.id) setSelectedList(null);
-          await deleteList(list.id);
+          await deleteList(coupleId, list.id);
         },
       },
     ]);
@@ -138,41 +134,40 @@ export default function TodosScreen({ user }: Props) {
   const pending = items.filter((i) => !i.isCompleted);
   const done = items.filter((i) => i.isCompleted);
 
-  const renderItem = ({ item }: { item: TodoItem }) => (
+  const renderItem = (item: TodoItem) => (
     <TouchableOpacity
+      key={item.id}
       style={[styles.todoItem, item.isCompleted && styles.todoItemDone]}
-      onPress={() => toggleItem(item, user.uid)}
+      onPress={() => toggleItem(coupleId, selectedList!.id, item, user.uid)}
       onLongPress={() => {
         Alert.alert('Elimina', `Eliminare "${item.text}"?`, [
           { text: 'Annulla', style: 'cancel' },
-          { text: 'Elimina', style: 'destructive', onPress: () => deleteItem(item.id) },
+          { text: 'Elimina', style: 'destructive', onPress: () => deleteItem(coupleId, selectedList!.id, item.id) },
         ]);
       }}
     >
-      <View
-        style={[
-          styles.checkbox,
-          item.isCompleted && { backgroundColor: selectedList?.color || colors.primary, borderColor: selectedList?.color || colors.primary },
-        ]}
-      >
+      <View style={[
+        styles.checkbox,
+        item.isCompleted && {
+          backgroundColor: selectedList?.color || colors.primary,
+          borderColor: selectedList?.color || colors.primary,
+        },
+      ]}>
         {item.isCompleted && <Ionicons name="checkmark" size={14} color={colors.white} />}
       </View>
-      <Text style={[styles.todoText, item.isCompleted && styles.todoTextDone]}>
-        {item.text}
-      </Text>
+      <Text style={[styles.todoText, item.isCompleted && styles.todoTextDone]}>{item.text}</Text>
     </TouchableOpacity>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         {selectedList ? (
           <TouchableOpacity onPress={() => setSelectedList(null)} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={22} color={colors.text} />
           </TouchableOpacity>
         ) : null}
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>
             {selectedList ? `${selectedList.emoji} ${selectedList.title}` : 'Liste'}
           </Text>
@@ -192,7 +187,6 @@ export default function TodosScreen({ user }: Props) {
       </View>
 
       {!selectedList ? (
-        /* Lists grid */
         loading ? (
           <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
         ) : lists.length === 0 ? (
@@ -215,15 +209,12 @@ export default function TodosScreen({ user }: Props) {
               >
                 <Text style={styles.listEmoji}>{item.emoji}</Text>
                 <Text style={styles.listTitle}>{item.title}</Text>
-                <View style={styles.listDot} />
               </TouchableOpacity>
             )}
           />
         )
       ) : (
-        /* Items view */
         <View style={{ flex: 1 }}>
-          {/* Add item bar */}
           <View style={styles.addItemBar}>
             <TextInput
               style={styles.addItemInput}
@@ -255,17 +246,11 @@ export default function TodosScreen({ user }: Props) {
                   <Text style={styles.emptyItemsText}>Lista vuota. Aggiungi qualcosa! 👆</Text>
                 </View>
               ) : null}
-
-              {pending.map((item) => (
-                <View key={item.id}>{renderItem({ item })}</View>
-              ))}
-
+              {pending.map(renderItem)}
               {done.length > 0 && (
                 <>
                   <Text style={styles.doneLabel}>Completati ({done.length})</Text>
-                  {done.map((item) => (
-                    <View key={item.id}>{renderItem({ item })}</View>
-                  ))}
+                  {done.map(renderItem)}
                 </>
               )}
             </ScrollView>
@@ -273,7 +258,6 @@ export default function TodosScreen({ user }: Props) {
         </View>
       )}
 
-      {/* New list modal */}
       <Modal visible={newListModal} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
@@ -282,21 +266,17 @@ export default function TodosScreen({ user }: Props) {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Nuova lista</Text>
             <TouchableOpacity onPress={handleCreateList} disabled={savingList}>
-              {savingList ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              {savingList ? <ActivityIndicator color={colors.primary} /> : (
                 <Text style={styles.modalSave}>Crea</Text>
               )}
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalBody}>
-            {/* Preview */}
             <View style={[styles.listPreview, { borderTopColor: listColor }]}>
               <Text style={styles.previewEmoji}>{listEmoji}</Text>
               <Text style={styles.previewTitle}>{listTitle || 'Nome lista'}</Text>
             </View>
-
             <TextInput
               style={styles.listNameInput}
               placeholder="Nome della lista"
@@ -304,7 +284,6 @@ export default function TodosScreen({ user }: Props) {
               onChangeText={setListTitle}
               autoFocus
             />
-
             <Text style={styles.sectionLabel}>Emoji</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.emojiRow}>
               {LIST_EMOJIS.map((e) => (
@@ -317,17 +296,12 @@ export default function TodosScreen({ user }: Props) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-
             <Text style={styles.sectionLabel}>Colore</Text>
             <View style={styles.colorRow}>
               {LIST_COLORS.map((c) => (
                 <TouchableOpacity
                   key={c}
-                  style={[
-                    styles.colorDot,
-                    { backgroundColor: c },
-                    listColor === c && styles.colorDotActive,
-                  ]}
+                  style={[styles.colorDot, { backgroundColor: c }, listColor === c && styles.colorDotActive]}
                   onPress={() => setListColor(c)}
                 />
               ))}
@@ -342,27 +316,16 @@ export default function TodosScreen({ user }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: 12,
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20,
+    paddingTop: 56, paddingBottom: 16, backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border, gap: 12,
   },
   backBtn: { padding: 4 },
   headerTitle: { fontSize: 22, fontWeight: '700', color: colors.text },
   headerSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
   addListBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginLeft: 'auto',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
   },
   addListBtnText: { color: colors.white, fontWeight: '600', fontSize: 14 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
@@ -371,154 +334,69 @@ const styles = StyleSheet.create({
   emptyDesc: { fontSize: 14, color: colors.textSecondary, marginTop: 6 },
   grid: { padding: 10 },
   listCard: {
-    flex: 1,
-    margin: 6,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 16,
-    borderTopWidth: 4,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    minHeight: 100,
+    flex: 1, margin: 6, backgroundColor: colors.surface, borderRadius: 14,
+    padding: 16, borderTopWidth: 4, elevation: 1, shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, minHeight: 100,
   },
   listEmoji: { fontSize: 30, marginBottom: 8 },
   listTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
-  listDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border, marginTop: 8 },
   addItemBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   addItemInput: {
-    flex: 1,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: colors.text,
+    flex: 1, backgroundColor: colors.surfaceAlt, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, color: colors.text,
   },
-  addItemBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  addItemBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   todoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: colors.surface,
+    borderRadius: 12, padding: 14, marginBottom: 8,
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04, shadowRadius: 3,
   },
   todoItemDone: { opacity: 0.6 },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 24, height: 24, borderRadius: 12, borderWidth: 2,
+    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
   },
   todoText: { fontSize: 15, color: colors.text, flex: 1 },
   todoTextDone: { textDecorationLine: 'line-through', color: colors.textLight },
   doneLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: 16,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13, fontWeight: '600', color: colors.textSecondary,
+    marginTop: 16, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5,
   },
   emptyItems: { alignItems: 'center', paddingTop: 40 },
   emptyItemsText: { color: colors.textSecondary, fontSize: 15 },
   modal: { flex: 1, backgroundColor: colors.background },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 56,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16, paddingTop: 56, backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   modalCancel: { fontSize: 16, color: colors.textSecondary },
   modalTitle: { fontSize: 16, fontWeight: '600', color: colors.text },
   modalSave: { fontSize: 16, fontWeight: '700', color: colors.primary },
   modalBody: { padding: 20 },
   listPreview: {
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 20,
-    borderTopWidth: 4,
-    alignItems: 'center',
-    marginBottom: 24,
+    backgroundColor: colors.surface, borderRadius: 14, padding: 20,
+    borderTopWidth: 4, alignItems: 'center', marginBottom: 24,
   },
   previewEmoji: { fontSize: 40, marginBottom: 8 },
   previewTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   listNameInput: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.text,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.border,
-    paddingVertical: 12,
-    marginBottom: 20,
+    fontSize: 18, fontWeight: '600', color: colors.text,
+    borderBottomWidth: 1.5, borderBottomColor: colors.border, paddingVertical: 12, marginBottom: 20,
   },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13, fontWeight: '600', color: colors.textSecondary,
+    marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5,
   },
   emojiRow: { marginBottom: 20 },
-  emojiBtn: {
-    padding: 10,
-    borderRadius: 12,
-    marginRight: 8,
-    backgroundColor: colors.surfaceAlt,
-  },
-  emojiBtnActive: {
-    backgroundColor: colors.primary + '20',
-    borderWidth: 2,
-    borderColor: colors.primary,
-  },
+  emojiBtn: { padding: 10, borderRadius: 12, marginRight: 8, backgroundColor: colors.surfaceAlt },
+  emojiBtnActive: { backgroundColor: colors.primary + '20', borderWidth: 2, borderColor: colors.primary },
   emojiText: { fontSize: 26 },
-  colorRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 20,
-  },
-  colorDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  colorDotActive: {
-    borderColor: colors.text,
-    transform: [{ scale: 1.15 }],
-  },
+  colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
+  colorDot: { width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: 'transparent' },
+  colorDotActive: { borderColor: colors.text, transform: [{ scale: 1.15 }] },
 });

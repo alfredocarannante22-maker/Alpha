@@ -9,7 +9,6 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Switch,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,9 +60,7 @@ const EMPTY_FORM = {
 
 export default function CalendarScreen({ user }: Props) {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split('T')[0]
-  );
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -84,10 +81,10 @@ export default function CalendarScreen({ user }: Props) {
     const marks: Record<string, any> = {};
     events.forEach((ev) => {
       const date = ev.startDate.split('T')[0];
-      if (!marks[date]) {
-        marks[date] = { dots: [] };
-      }
-      marks[date].dots.push({ color: ev.color || ev.createdBy === user.uid ? colors.husband : colors.wife });
+      if (!marks[date]) marks[date] = { dots: [] };
+      marks[date].dots.push({
+        color: ev.createdBy === user.uid ? colors.husband : colors.wife,
+      });
     });
     if (marks[selectedDate]) {
       marks[selectedDate].selected = true;
@@ -98,9 +95,7 @@ export default function CalendarScreen({ user }: Props) {
     return marks;
   }, [events, selectedDate, user.uid]);
 
-  const dayEvents = events.filter(
-    (ev) => ev.startDate.split('T')[0] === selectedDate
-  );
+  const dayEvents = events.filter((ev) => ev.startDate.split('T')[0] === selectedDate);
 
   function openCreate() {
     setEditingEvent(null);
@@ -146,7 +141,7 @@ export default function CalendarScreen({ user }: Props) {
         updatedAt: now,
       };
       if (editingEvent) {
-        await updateEvent(editingEvent.id, data);
+        await updateEvent(coupleId, editingEvent.id, data);
       } else {
         await createEvent({ ...data, createdAt: now } as any);
       }
@@ -164,9 +159,7 @@ export default function CalendarScreen({ user }: Props) {
       {
         text: 'Elimina',
         style: 'destructive',
-        onPress: async () => {
-          await deleteEvent(ev.id);
-        },
+        onPress: () => deleteEvent(coupleId, ev.id),
       },
     ]);
   }
@@ -176,7 +169,6 @@ export default function CalendarScreen({ user }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Calendario</Text>
         <View style={styles.legend}>
@@ -205,7 +197,6 @@ export default function CalendarScreen({ user }: Props) {
         }}
       />
 
-      {/* Day events */}
       <View style={styles.daySection}>
         <View style={styles.daySectionHeader}>
           <Text style={styles.dayTitle}>
@@ -224,7 +215,7 @@ export default function CalendarScreen({ user }: Props) {
           <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
         ) : dayEvents.length === 0 ? (
           <View style={styles.emptyDay}>
-            <Text style={styles.emptyText}>Nessun evento oggi 🎉</Text>
+            <Text style={styles.emptyText}>Nessun evento 🎉</Text>
           </View>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
@@ -236,17 +227,11 @@ export default function CalendarScreen({ user }: Props) {
                 onLongPress={() => handleDelete(ev)}
               >
                 <View style={styles.eventRow}>
-                  <Ionicons
-                    name={CATEGORY_ICONS[ev.category]}
-                    size={16}
-                    color={eventColor(ev)}
-                  />
+                  <Ionicons name={CATEGORY_ICONS[ev.category]} size={16} color={eventColor(ev)} />
                   <Text style={styles.eventTitle}>{ev.title}</Text>
                 </View>
                 {ev.description ? (
-                  <Text style={styles.eventDesc} numberOfLines={1}>
-                    {ev.description}
-                  </Text>
+                  <Text style={styles.eventDesc} numberOfLines={1}>{ev.description}</Text>
                 ) : null}
                 {ev.location ? (
                   <View style={styles.eventMeta}>
@@ -256,8 +241,7 @@ export default function CalendarScreen({ user }: Props) {
                 ) : null}
                 <Text style={styles.eventCreator}>
                   {ev.createdBy === user.uid ? 'Tu' : ev.createdByName}
-                  {' · '}
-                  {CATEGORY_LABELS[ev.category]}
+                  {' · '}{CATEGORY_LABELS[ev.category]}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -265,7 +249,6 @@ export default function CalendarScreen({ user }: Props) {
         )}
       </View>
 
-      {/* Modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
@@ -276,9 +259,7 @@ export default function CalendarScreen({ user }: Props) {
               {editingEvent ? 'Modifica evento' : 'Nuovo evento'}
             </Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              {saving ? <ActivityIndicator color={colors.primary} /> : (
                 <Text style={styles.modalSave}>Salva</Text>
               )}
             </TouchableOpacity>
@@ -292,17 +273,15 @@ export default function CalendarScreen({ user }: Props) {
               onChangeText={(v) => setForm({ ...form, title: v })}
               autoFocus
             />
-
             <View style={styles.field}>
               <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
               <TextInput
                 style={styles.fieldInput}
-                placeholder="Data (AAAA-MM-GG)"
+                placeholder="Data inizio (AAAA-MM-GG)"
                 value={form.startDate}
                 onChangeText={(v) => setForm({ ...form, startDate: v })}
               />
             </View>
-
             <View style={styles.field}>
               <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -312,7 +291,6 @@ export default function CalendarScreen({ user }: Props) {
                 onChangeText={(v) => setForm({ ...form, endDate: v })}
               />
             </View>
-
             <View style={styles.field}>
               <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -322,7 +300,6 @@ export default function CalendarScreen({ user }: Props) {
                 onChangeText={(v) => setForm({ ...form, location: v })}
               />
             </View>
-
             <View style={styles.field}>
               <Ionicons name="document-text-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -339,10 +316,7 @@ export default function CalendarScreen({ user }: Props) {
               {(Object.keys(CATEGORY_LABELS) as EventCategory[]).map((cat) => (
                 <TouchableOpacity
                   key={cat}
-                  style={[
-                    styles.catChip,
-                    form.category === cat && styles.catChipActive,
-                  ]}
+                  style={[styles.catChip, form.category === cat && styles.catChipActive]}
                   onPress={() => setForm({ ...form, category: cat })}
                 >
                   <Ionicons
@@ -350,12 +324,7 @@ export default function CalendarScreen({ user }: Props) {
                     size={14}
                     color={form.category === cat ? colors.white : colors.textSecondary}
                   />
-                  <Text
-                    style={[
-                      styles.catText,
-                      form.category === cat && styles.catTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.catText, form.category === cat && styles.catTextActive]}>
                     {CATEGORY_LABELS[cat]}
                   </Text>
                 </TouchableOpacity>
@@ -383,10 +352,7 @@ const styles = StyleSheet.create({
   legend: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   legendText: { fontSize: 12, color: colors.textSecondary },
-  calendar: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
+  calendar: { borderBottomWidth: 1, borderBottomColor: colors.border },
   daySection: { flex: 1, padding: 16 },
   daySectionHeader: {
     flexDirection: 'row',

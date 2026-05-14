@@ -136,15 +136,10 @@ export default function ExpensesScreen({ user }: Props) {
   }
 
   async function handleSave() {
-    if (!form.title.trim()) {
-      Alert.alert('Attenzione', 'Inserisci un titolo.');
-      return;
-    }
+    if (!form.title.trim()) { Alert.alert('Attenzione', 'Inserisci un titolo.'); return; }
     const amt = parseFloat(form.amount);
-    if (isNaN(amt) || amt <= 0) {
-      Alert.alert('Attenzione', 'Inserisci un importo valido.');
-      return;
-    }
+    if (isNaN(amt) || amt <= 0) { Alert.alert('Attenzione', 'Inserisci un importo valido.'); return; }
+
     setSaving(true);
     try {
       const now = new Date().toISOString();
@@ -165,7 +160,7 @@ export default function ExpensesScreen({ user }: Props) {
         updatedAt: now,
       };
       if (editing) {
-        await updateExpense(editing.id, data);
+        await updateExpense(coupleId, editing.id, data);
       } else {
         await createExpense(data);
       }
@@ -180,7 +175,7 @@ export default function ExpensesScreen({ user }: Props) {
   async function handleDelete(exp: Expense) {
     Alert.alert('Elimina spesa', `Eliminare "${exp.title}"?`, [
       { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => deleteExpense(exp.id) },
+      { text: 'Elimina', style: 'destructive', onPress: () => deleteExpense(coupleId, exp.id) },
     ]);
   }
 
@@ -207,10 +202,7 @@ export default function ExpensesScreen({ user }: Props) {
               </View>
             )}
             <Text style={styles.expenseDate}>
-              {new Date(item.date + 'T12:00:00').toLocaleDateString('it-IT', {
-                day: 'numeric',
-                month: 'short',
-              })}
+              {new Date(item.date + 'T12:00:00').toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
             </Text>
           </View>
           <Text style={styles.expensePaidBy}>
@@ -218,21 +210,17 @@ export default function ExpensesScreen({ user }: Props) {
             {item.splitBetween ? ' · Diviso' : ''}
           </Text>
         </View>
-        <Text style={[styles.expenseAmount, { color: dotColor }]}>
-          €{item.amount.toFixed(2)}
-        </Text>
+        <Text style={[styles.expenseAmount, { color: dotColor }]}>€{item.amount.toFixed(2)}</Text>
       </TouchableOpacity>
     );
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Spese</Text>
       </View>
 
-      {/* Summary cards */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.summaryRow}>
         <View style={[styles.summaryCard, { backgroundColor: colors.primary }]}>
           <Text style={styles.summaryLabel}>Totale</Text>
@@ -248,7 +236,6 @@ export default function ExpensesScreen({ user }: Props) {
         </View>
       </ScrollView>
 
-      {/* Filter tabs */}
       <View style={styles.filterRow}>
         {(['all', 'recurring', 'mine'] as FilterTab[]).map((f) => (
           <TouchableOpacity
@@ -285,20 +272,15 @@ export default function ExpensesScreen({ user }: Props) {
         <Ionicons name="add" size={28} color={colors.white} />
       </TouchableOpacity>
 
-      {/* Modal */}
       <Modal visible={modalVisible} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modal}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setModalVisible(false)}>
               <Text style={styles.modalCancel}>Annulla</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>
-              {editing ? 'Modifica spesa' : 'Nuova spesa'}
-            </Text>
+            <Text style={styles.modalTitle}>{editing ? 'Modifica spesa' : 'Nuova spesa'}</Text>
             <TouchableOpacity onPress={handleSave} disabled={saving}>
-              {saving ? (
-                <ActivityIndicator color={colors.primary} />
-              ) : (
+              {saving ? <ActivityIndicator color={colors.primary} /> : (
                 <Text style={styles.modalSave}>Salva</Text>
               )}
             </TouchableOpacity>
@@ -312,8 +294,6 @@ export default function ExpensesScreen({ user }: Props) {
               onChangeText={(v) => setForm({ ...form, title: v })}
               autoFocus
             />
-
-            {/* Amount */}
             <View style={styles.amountRow}>
               <Text style={styles.currency}>€</Text>
               <TextInput
@@ -324,7 +304,6 @@ export default function ExpensesScreen({ user }: Props) {
                 keyboardType="decimal-pad"
               />
             </View>
-
             <View style={styles.field}>
               <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -334,7 +313,6 @@ export default function ExpensesScreen({ user }: Props) {
                 onChangeText={(v) => setForm({ ...form, date: v })}
               />
             </View>
-
             <View style={styles.switchRow}>
               <View style={styles.switchLabel}>
                 <Ionicons name="repeat-outline" size={18} color={colors.textSecondary} />
@@ -346,7 +324,6 @@ export default function ExpensesScreen({ user }: Props) {
                 trackColor={{ true: colors.primary }}
               />
             </View>
-
             {form.isRecurring && (
               <>
                 <Text style={styles.sectionLabel}>Frequenza</Text>
@@ -354,24 +331,15 @@ export default function ExpensesScreen({ user }: Props) {
                   {(Object.keys(RECURRING_LABELS) as RecurringInterval[]).map((r) => (
                     <TouchableOpacity
                       key={r}
-                      style={[
-                        styles.chip,
-                        form.recurringInterval === r && styles.chipActive,
-                      ]}
+                      style={[styles.chip, form.recurringInterval === r && styles.chipActive]}
                       onPress={() => setForm({ ...form, recurringInterval: r })}
                     >
-                      <Text
-                        style={[
-                          styles.chipText,
-                          form.recurringInterval === r && styles.chipTextActive,
-                        ]}
-                      >
+                      <Text style={[styles.chipText, form.recurringInterval === r && styles.chipTextActive]}>
                         {RECURRING_LABELS[r]}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
-
                 <View style={styles.field}>
                   <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
                   <TextInput
@@ -383,7 +351,6 @@ export default function ExpensesScreen({ user }: Props) {
                 </View>
               </>
             )}
-
             <View style={styles.switchRow}>
               <View style={styles.switchLabel}>
                 <Ionicons name="people-outline" size={18} color={colors.textSecondary} />
@@ -395,7 +362,6 @@ export default function ExpensesScreen({ user }: Props) {
                 trackColor={{ true: colors.primary }}
               />
             </View>
-
             <Text style={styles.sectionLabel}>Categoria</Text>
             <View style={styles.categoryGrid}>
               {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map((cat) => (
@@ -409,15 +375,12 @@ export default function ExpensesScreen({ user }: Props) {
                     size={18}
                     color={form.category === cat ? colors.white : colors.textSecondary}
                   />
-                  <Text
-                    style={[styles.catBtnText, form.category === cat && styles.catBtnTextActive]}
-                  >
+                  <Text style={[styles.catBtnText, form.category === cat && styles.catBtnTextActive]}>
                     {CATEGORY_LABELS[cat]}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-
             <View style={styles.field}>
               <Ionicons name="create-outline" size={18} color={colors.textSecondary} />
               <TextInput
@@ -438,36 +401,16 @@ export default function ExpensesScreen({ user }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 16,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 20, paddingTop: 56, paddingBottom: 16,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { fontSize: 22, fontWeight: '700', color: colors.text },
   summaryRow: { paddingHorizontal: 12, paddingVertical: 16 },
-  summaryCard: {
-    borderRadius: 16,
-    padding: 16,
-    marginHorizontal: 6,
-    minWidth: 130,
-  },
+  summaryCard: { borderRadius: 16, padding: 16, marginHorizontal: 6, minWidth: 130 },
   summaryLabel: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   summaryAmount: { fontSize: 22, fontWeight: '700', color: colors.white, marginTop: 4 },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    gap: 8,
-    marginBottom: 4,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 10,
-    backgroundColor: colors.surfaceAlt,
-  },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 4 },
+  filterTab: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10, backgroundColor: colors.surfaceAlt },
   filterTabActive: { backgroundColor: colors.primary },
   filterText: { fontSize: 13, color: colors.textSecondary, fontWeight: '500' },
   filterTextActive: { color: colors.white, fontWeight: '600' },
@@ -476,146 +419,74 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 18, fontWeight: '600', color: colors.text },
   emptyDesc: { fontSize: 14, color: colors.textSecondary, marginTop: 6 },
   expenseCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: 14, padding: 14, marginBottom: 10,
+    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4,
   },
-  catIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
+  catIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   expenseInfo: { flex: 1 },
   expenseTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   expenseMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3 },
   expenseCategory: { fontSize: 12, color: colors.textSecondary },
   recurringBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.primary + '15',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: colors.primary + '15', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2,
   },
   recurringText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
   expenseDate: { fontSize: 12, color: colors.textLight },
   expensePaidBy: { fontSize: 11, color: colors.textLight, marginTop: 2 },
   expenseAmount: { fontSize: 17, fontWeight: '700' },
   fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 8,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
+    position: 'absolute', bottom: 24, right: 24, width: 56, height: 56,
+    borderRadius: 28, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
+    elevation: 8, shadowColor: colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35, shadowRadius: 10,
   },
   modal: { flex: 1, backgroundColor: colors.background },
   modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 56,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    padding: 16, paddingTop: 56, backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   modalCancel: { fontSize: 16, color: colors.textSecondary },
   modalTitle: { fontSize: 16, fontWeight: '600', color: colors.text },
   modalSave: { fontSize: 16, fontWeight: '700', color: colors.primary },
   modalBody: { padding: 20 },
   titleInput: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.text,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.border,
-    paddingVertical: 12,
-    marginBottom: 16,
+    fontSize: 20, fontWeight: '600', color: colors.text,
+    borderBottomWidth: 1.5, borderBottomColor: colors.border, paddingVertical: 12, marginBottom: 16,
   },
   amountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderBottomWidth: 1.5,
-    borderBottomColor: colors.border,
-    paddingBottom: 12,
+    flexDirection: 'row', alignItems: 'center', marginBottom: 16,
+    borderBottomWidth: 1.5, borderBottomColor: colors.border, paddingBottom: 12,
   },
   currency: { fontSize: 32, fontWeight: '700', color: colors.primary, marginRight: 8 },
   amountInput: { fontSize: 32, fontWeight: '700', color: colors.text, flex: 1 },
   field: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   fieldInput: { flex: 1, fontSize: 15, color: colors.text },
   switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.divider,
   },
   switchLabel: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   switchText: { fontSize: 15, color: colors.text },
   sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginTop: 20,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13, fontWeight: '600', color: colors.textSecondary,
+    marginTop: 20, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5,
   },
   chipRow: { marginBottom: 8 },
-  chip: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginRight: 8,
-  },
+  chip: { backgroundColor: colors.surfaceAlt, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8, marginRight: 8 },
   chipActive: { backgroundColor: colors.primary },
   chipText: { fontSize: 13, color: colors.textSecondary },
   chipTextActive: { color: colors.white, fontWeight: '600' },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
-  },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   catBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: colors.surfaceAlt, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8,
   },
   catBtnActive: { backgroundColor: colors.primary },
   catBtnText: { fontSize: 13, color: colors.textSecondary },
