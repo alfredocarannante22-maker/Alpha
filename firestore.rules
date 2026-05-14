@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Allow reading other users by email (for partner linking)
+      allow read: if request.auth != null;
+    }
+
+    // Calendar events: only couple members
+    match /events/{eventId} {
+      allow read, write: if request.auth != null
+        && resource.data.coupleId in getCoupleIds(request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // Notes: private — only the creator
+    match /notes/{noteId} {
+      allow read, write: if request.auth != null
+        && resource.data.createdBy == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // Expenses: shared between couple
+    match /expenses/{expenseId} {
+      allow read, write: if request.auth != null
+        && resource.data.coupleId in getCoupleIds(request.auth.uid);
+      allow create: if request.auth != null
+        && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    // Todo lists: shared between couple
+    match /todoLists/{listId} {
+      allow read, write: if request.auth != null
+        && resource.data.coupleId in getCoupleIds(request.auth.uid);
+      allow create: if request.auth != null;
+    }
+
+    // Todo items: shared between couple
+    match /todoItems/{itemId} {
+      allow read, write: if request.auth != null
+        && resource.data.coupleId in getCoupleIds(request.auth.uid);
+      allow create: if request.auth != null;
+    }
+
+    function getCoupleIds(uid) {
+      let user = get(/databases/$(database)/documents/users/$(uid)).data;
+      return [user.coupleId, uid];
+    }
+  }
+}
