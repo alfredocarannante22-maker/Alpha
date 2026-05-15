@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,8 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Calendar, DateData } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
+import CalendarView from '../components/calendar/CalendarView';
 import { colors } from '../theme/colors';
 import { AppUser, CalendarEvent, EventCategory } from '../types';
 import {
@@ -179,22 +179,10 @@ export default function CalendarScreen({ user }: Props) {
         </View>
       </View>
 
-      <Calendar
-        style={styles.calendar}
-        onDayPress={(day: DateData) => setSelectedDate(day.dateString)}
+      <CalendarView
+        onDayPress={(dateStr) => setSelectedDate(dateStr)}
         markedDates={markedDates()}
-        markingType="multi-dot"
-        theme={{
-          todayTextColor: colors.primary,
-          selectedDayBackgroundColor: colors.primary,
-          arrowColor: colors.primary,
-          monthTextColor: colors.text,
-          dayTextColor: colors.text,
-          calendarBackground: colors.surface,
-          textMonthFontSize: 17,
-          textDayFontSize: 14,
-          textDayHeaderFontSize: 12,
-        }}
+        selectedDate={selectedDate}
       />
 
       <View style={styles.daySection}>
