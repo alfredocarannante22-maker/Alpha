@@ -188,12 +188,12 @@ export default function CalendarScreen({ user }: Props) {
           todayTextColor: colors.primary,
           selectedDayBackgroundColor: colors.primary,
           arrowColor: colors.primary,
-          textMonthFontWeight: '700',
-          textMonthFontSize: 17,
           monthTextColor: colors.text,
           dayTextColor: colors.text,
-          textDayFontSize: 14,
           calendarBackground: colors.surface,
+          textMonthFontSize: 17,
+          textDayFontSize: 14,
+          textDayHeaderFontSize: 12,
         }}
       />
 
