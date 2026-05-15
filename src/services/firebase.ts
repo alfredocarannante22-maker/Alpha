@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, inMemoryPersistence } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
@@ -14,6 +14,10 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-export const auth = getAuth(app);
+// Use inMemoryPersistence to avoid browser IndexedDB calls (JSI crash in Expo Go)
+export const auth = getApps().length > 1
+  ? initializeAuth(getApp(), { persistence: inMemoryPersistence })
+  : initializeAuth(app, { persistence: inMemoryPersistence });
+
 export const db = getDatabase(app);
 export default app;
