@@ -1,12 +1,9 @@
 import React from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
 import { useAuth } from './src/hooks/useAuth';
 import { colors } from './src/theme/colors';
 import LoginScreen from './src/screens/LoginScreen';
-import TabNavigator from './src/navigation/TabNavigator';
+import MainNavigator from './src/navigation/MainNavigator';
 import { AppUser } from './src/types';
 
 export default function App() {
@@ -21,20 +18,19 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
+    <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-      <NavigationContainer>
-        {user ? (
-          <TabNavigator user={user} setUser={setUser} />
-        ) : (
-          <LoginScreen onLogin={(u: AppUser) => setUser(u)} />
-        )}
-      </NavigationContainer>
-    </SafeAreaProvider>
+      {user ? (
+        <MainNavigator user={user} setUser={setUser} />
+      ) : (
+        <LoginScreen onLogin={(u: AppUser) => setUser(u)} />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.background },
   loader: {
     flex: 1,
     alignItems: 'center',
