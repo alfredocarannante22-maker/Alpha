@@ -20,9 +20,10 @@ function getFirebaseAuth() {
     if (Platform.OS === 'web') {
       return getAuth(app);
     }
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    const { createAsyncStorage } = require('@react-native-async-storage/async-storage');
+    const appStorage = createAsyncStorage('firebase-auth');
     return initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
+      persistence: getReactNativePersistence(appStorage),
     });
   } catch {
     return getAuth(app);

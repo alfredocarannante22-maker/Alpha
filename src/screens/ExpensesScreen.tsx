@@ -321,7 +321,7 @@ export default function ExpensesScreen({ user }: Props) {
               <Switch
                 value={form.isRecurring}
                 onValueChange={(v) => setForm({ ...form, isRecurring: v })}
-                trackColor={{ true: colors.primary }}
+                trackColor={{ false: colors.border, true: colors.primary }}
               />
             </View>
             {form.isRecurring && (
@@ -359,7 +359,7 @@ export default function ExpensesScreen({ user }: Props) {
               <Switch
                 value={form.splitBetween}
                 onValueChange={(v) => setForm({ ...form, splitBetween: v })}
-                trackColor={{ true: colors.primary }}
+                trackColor={{ false: colors.border, true: colors.primary }}
               />
             </View>
             <Text style={styles.sectionLabel}>Categoria</Text>
