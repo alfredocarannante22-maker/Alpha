@@ -9,13 +9,14 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import CalendarView from '../components/calendar/CalendarView';
 import { colors } from '../theme/colors';
 import { AppUser, CalendarEvent, EventCategory } from '../types';
 import {
-  subscribeToEvents,
+  fetchEvents,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -66,16 +67,25 @@ export default function CalendarScreen({ user }: Props) {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const coupleId = user.coupleId || user.uid;
 
-  useEffect(() => {
-    const unsub = subscribeToEvents(coupleId, (evts) => {
+  const loadData = useCallback(async () => {
+    try {
+      const evts = await fetchEvents(coupleId);
       setEvents(evts);
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
       setLoading(false);
-    });
-    return unsub;
+      setRefreshing(false);
+    }
   }, [coupleId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const markedDates = useCallback(() => {
     const marks: Record<string, any> = {};
@@ -146,6 +156,7 @@ export default function CalendarScreen({ user }: Props) {
         await createEvent({ ...data, createdAt: now } as any);
       }
       setModalVisible(false);
+      await loadData();
     } catch (e: any) {
       Alert.alert('Errore', e.message);
     } finally {
@@ -159,7 +170,10 @@ export default function CalendarScreen({ user }: Props) {
       {
         text: 'Elimina',
         style: 'destructive',
-        onPress: () => deleteEvent(coupleId, ev.id),
+        onPress: async () => {
+          await deleteEvent(coupleId, ev.id);
+          await loadData();
+        },
       },
     ]);
   }
@@ -206,7 +220,15 @@ export default function CalendarScreen({ user }: Props) {
             <Text style={styles.emptyText}>Nessun evento 🎉</Text>
           </View>
         ) : (
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => { setRefreshing(true); loadData(); }}
+              />
+            }
+          >
             {dayEvents.map((ev) => (
               <TouchableOpacity
                 key={ev.id}

@@ -10,12 +10,13 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { AppUser, Note } from '../types';
 import {
-  subscribeToNotes,
+  fetchNotes,
   createNote,
   updateNote,
   deleteNote,
@@ -40,13 +41,22 @@ export default function NotesScreen({ user }: Props) {
   const [noteColor, setNoteColor] = useState(NOTE_COLORS[0]);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadData = async () => {
+    try {
+      const data = await fetchNotes(user.uid);
+      setNotes(data);
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const unsub = subscribeToNotes(user.uid, (data) => {
-      setNotes(data);
-      setLoading(false);
-    });
-    return unsub;
+    loadData();
   }, [user.uid]);
 
   const filtered = search
@@ -101,6 +111,7 @@ export default function NotesScreen({ user }: Props) {
         });
       }
       setModalVisible(false);
+      await loadData();
     } catch (e: any) {
       Alert.alert('Errore', e.message);
     } finally {
@@ -110,6 +121,7 @@ export default function NotesScreen({ user }: Props) {
 
   async function togglePin(note: Note) {
     await updateNote(user.uid, note.id, { isPinned: !note.isPinned });
+    await loadData();
   }
 
   async function handleDelete(note: Note) {
@@ -118,7 +130,10 @@ export default function NotesScreen({ user }: Props) {
       {
         text: 'Elimina',
         style: 'destructive',
-        onPress: () => deleteNote(user.uid, note.id),
+        onPress: async () => {
+          await deleteNote(user.uid, note.id);
+          await loadData();
+        },
       },
     ]);
   }
@@ -194,6 +209,12 @@ export default function NotesScreen({ user }: Props) {
           numColumns={2}
           contentContainerStyle={styles.grid}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); loadData(); }}
+            />
+          }
         />
       )}
 

@@ -2,7 +2,6 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useAuth } from './src/hooks/useAuth';
 import { colors } from './src/theme/colors';
@@ -22,18 +21,16 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
-        <NavigationContainer>
-          {user ? (
-            <TabNavigator user={user} setUser={setUser} />
-          ) : (
-            <LoginScreen onLogin={(u: AppUser) => setUser(u)} />
-          )}
-        </NavigationContainer>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.surface} />
+      <NavigationContainer>
+        {user ? (
+          <TabNavigator user={user} setUser={setUser} />
+        ) : (
+          <LoginScreen onLogin={(u: AppUser) => setUser(u)} />
+        )}
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 

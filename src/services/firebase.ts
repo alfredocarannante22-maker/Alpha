@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeAuth, inMemoryPersistence } from 'firebase/auth';
-import { getDatabase } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -14,10 +13,10 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Use inMemoryPersistence to avoid browser IndexedDB calls (JSI crash in Expo Go)
-export const auth = getApps().length > 1
-  ? initializeAuth(getApp(), { persistence: inMemoryPersistence })
-  : initializeAuth(app, { persistence: inMemoryPersistence });
+// inMemoryPersistence avoids any native module (IndexedDB) calls
+export const auth = (() => {
+  try { return initializeAuth(app, { persistence: inMemoryPersistence }); }
+  catch { const { getAuth } = require('firebase/auth'); return getAuth(app); }
+})();
 
-export const db = getDatabase(app);
 export default app;

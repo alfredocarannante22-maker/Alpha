@@ -11,12 +11,13 @@ import {
   ActivityIndicator,
   ScrollView,
   Switch,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { AppUser, Expense, ExpenseCategory, RecurringInterval } from '../types';
 import {
-  subscribeToExpenses,
+  fetchExpenses,
   createExpense,
   updateExpense,
   deleteExpense,
@@ -81,14 +82,24 @@ export default function ExpensesScreen({ user }: Props) {
     notes: '',
   });
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const coupleId = user.coupleId || user.uid;
 
-  useEffect(() => {
-    const unsub = subscribeToExpenses(coupleId, (data) => {
+  const loadData = async () => {
+    try {
+      const data = await fetchExpenses(coupleId);
       setExpenses(data);
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
       setLoading(false);
-    });
-    return unsub;
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [coupleId]);
 
   const filtered = expenses.filter((e) => {
@@ -165,6 +176,7 @@ export default function ExpensesScreen({ user }: Props) {
         await createExpense(data);
       }
       setModalVisible(false);
+      await loadData();
     } catch (e: any) {
       Alert.alert('Errore', e.message);
     } finally {
@@ -175,7 +187,14 @@ export default function ExpensesScreen({ user }: Props) {
   async function handleDelete(exp: Expense) {
     Alert.alert('Elimina spesa', `Eliminare "${exp.title}"?`, [
       { text: 'Annulla', style: 'cancel' },
-      { text: 'Elimina', style: 'destructive', onPress: () => deleteExpense(coupleId, exp.id) },
+      {
+        text: 'Elimina',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteExpense(coupleId, exp.id);
+          await loadData();
+        },
+      },
     ]);
   }
 
@@ -265,6 +284,12 @@ export default function ExpensesScreen({ user }: Props) {
           renderItem={renderExpense}
           contentContainerStyle={{ padding: 16 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); loadData(); }}
+            />
+          }
         />
       )}
 

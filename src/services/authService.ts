@@ -5,11 +5,10 @@ import {
   updateProfile,
   User,
 } from 'firebase/auth';
-import { ref, set, get, update } from 'firebase/database';
-import { auth, db } from './firebase';
+import { auth } from './firebase';
+import { rtdbGet, rtdbSet, rtdbUpdate } from './rtdb';
 import { AppUser, UserRole } from '../types';
 
-// Sanitize email for use as RTDB key (replace . with ,)
 function emailToKey(email: string): string {
   return email.toLowerCase().replace(/\./g, ',');
 }
@@ -31,10 +30,8 @@ export async function registerUser(
     coupleId: cred.user.uid,
   };
 
-  // Save user profile
-  await set(ref(db, `users/${cred.user.uid}`), userData);
-  // Save email → uid index for partner linking
-  await set(ref(db, `emailIndex/${emailToKey(email)}`), cred.user.uid);
+  await rtdbSet(`users/${cred.user.uid}`, userData);
+  await rtdbSet(`emailIndex/${emailToKey(email)}`, cred.user.uid);
 
   return userData;
 }
@@ -49,34 +46,28 @@ export async function logoutUser(): Promise<void> {
 }
 
 export async function getUserProfile(uid: string): Promise<AppUser | null> {
-  const snap = await get(ref(db, `users/${uid}`));
-  return snap.exists() ? (snap.val() as AppUser) : null;
+  const data = await rtdbGet(`users/${uid}`);
+  return data ? (data as AppUser) : null;
 }
 
 export async function linkPartner(myUid: string, partnerEmail: string): Promise<string> {
-  // Look up partner uid via email index
-  const indexSnap = await get(ref(db, `emailIndex/${emailToKey(partnerEmail)}`));
-  if (!indexSnap.exists()) {
-    throw new Error('Partner non trovato. Assicurati che si sia già registrato.');
-  }
+  const partnerId = await rtdbGet(`emailIndex/${emailToKey(partnerEmail)}`);
+  if (!partnerId) throw new Error('Partner non trovato. Assicurati che si sia già registrato.');
 
-  const partnerId: string = indexSnap.val();
-
-  const mySnap = await get(ref(db, `users/${myUid}`));
-  if (!mySnap.exists()) throw new Error('Profilo non trovato.');
-  const myData = mySnap.val() as AppUser;
+  const myData = await rtdbGet(`users/${myUid}`) as AppUser;
+  if (!myData) throw new Error('Profilo non trovato.');
 
   const coupleId = myUid < partnerId
     ? `${myUid}_${partnerId}`
     : `${partnerId}_${myUid}`;
 
-  await update(ref(db, `users/${myUid}`), {
+  await rtdbUpdate(`users/${myUid}`, {
     partnerId,
     partnerEmail: partnerEmail.toLowerCase(),
     coupleId,
   });
 
-  await update(ref(db, `users/${partnerId}`), {
+  await rtdbUpdate(`users/${partnerId}`, {
     partnerId: myUid,
     partnerEmail: myData.email,
     coupleId,

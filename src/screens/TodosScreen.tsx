@@ -10,13 +10,14 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { AppUser, TodoList, TodoItem } from '../types';
 import {
-  subscribeToLists,
-  subscribeToItems,
+  fetchLists,
+  fetchItems,
   createList,
   deleteList,
   createItem,
@@ -49,25 +50,42 @@ export default function TodosScreen({ user }: Props) {
 
   const [newItemText, setNewItemText] = useState('');
   const [addingItem, setAddingItem] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const coupleId = user.coupleId || user.uid;
 
-  useEffect(() => {
-    const unsub = subscribeToLists(coupleId, (data) => {
+  const loadData = async () => {
+    try {
+      const data = await fetchLists(coupleId);
       setLists(data);
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
       setLoading(false);
-    });
-    return unsub;
+      setRefreshing(false);
+    }
+  };
+
+  const loadItems = async () => {
+    if (!selectedList) return;
+    setItemsLoading(true);
+    try {
+      const data = await fetchItems(coupleId, selectedList.id);
+      setItems(data);
+    } catch (e: any) {
+      Alert.alert('Errore', e.message);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, [coupleId]);
 
   useEffect(() => {
     if (!selectedList) return;
-    setItemsLoading(true);
-    const unsub = subscribeToItems(coupleId, selectedList.id, (data) => {
-      setItems(data);
-      setItemsLoading(false);
-    });
-    return unsub;
+    loadItems();
   }, [selectedList, coupleId]);
 
   async function handleCreateList() {
@@ -89,6 +107,7 @@ export default function TodosScreen({ user }: Props) {
       setListTitle('');
       setListEmoji(LIST_EMOJIS[0]);
       setListColor(LIST_COLORS[0]);
+      await loadData();
     } catch (e: any) {
       Alert.alert('Errore', e.message);
     } finally {
@@ -111,6 +130,7 @@ export default function TodosScreen({ user }: Props) {
         updatedAt: now,
       });
       setNewItemText('');
+      await loadItems();
     } catch (e: any) {
       Alert.alert('Errore', e.message);
     } finally {
@@ -126,6 +146,7 @@ export default function TodosScreen({ user }: Props) {
         onPress: async () => {
           if (selectedList?.id === list.id) setSelectedList(null);
           await deleteList(coupleId, list.id);
+          await loadData();
         },
       },
     ]);
@@ -138,11 +159,21 @@ export default function TodosScreen({ user }: Props) {
     <TouchableOpacity
       key={item.id}
       style={[styles.todoItem, item.isCompleted && styles.todoItemDone]}
-      onPress={() => toggleItem(coupleId, selectedList!.id, item, user.uid)}
+      onPress={async () => {
+        await toggleItem(coupleId, selectedList!.id, item, user.uid);
+        await loadItems();
+      }}
       onLongPress={() => {
         Alert.alert('Elimina', `Eliminare "${item.text}"?`, [
           { text: 'Annulla', style: 'cancel' },
-          { text: 'Elimina', style: 'destructive', onPress: () => deleteItem(coupleId, selectedList!.id, item.id) },
+          {
+            text: 'Elimina',
+            style: 'destructive',
+            onPress: async () => {
+              await deleteItem(coupleId, selectedList!.id, item.id);
+              await loadItems();
+            },
+          },
         ]);
       }}
     >
@@ -201,6 +232,12 @@ export default function TodosScreen({ user }: Props) {
             keyExtractor={(item) => item.id}
             numColumns={2}
             contentContainerStyle={styles.grid}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => { setRefreshing(true); loadData(); }}
+              />
+            }
             renderItem={({ item }) => (
               <TouchableOpacity
                 style={[styles.listCard, { borderTopColor: item.color }]}
@@ -240,7 +277,15 @@ export default function TodosScreen({ user }: Props) {
           {itemsLoading ? (
             <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
           ) : (
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <ScrollView
+              contentContainerStyle={{ padding: 16 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={itemsLoading && !addingItem}
+                  onRefresh={loadItems}
+                />
+              }
+            >
               {pending.length === 0 && done.length === 0 ? (
                 <View style={styles.emptyItems}>
                   <Text style={styles.emptyItemsText}>Lista vuota. Aggiungi qualcosa! 👆</Text>
